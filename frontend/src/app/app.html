@@ -1,0 +1,13 @@
+<header class="topbar">
+  <a class="brand" routerLink="/teams">Taskflow</a>
+  @if (auth.user(); as user) {
+    <div class="topbar-user">
+      <span>{{ user.displayName }}</span>
+      <button type="button" class="link" (click)="auth.logout()">Sign out</button>
+    </div>
+  }
+</header>
+
+<main class="page">
+  <router-outlet />
+</main>

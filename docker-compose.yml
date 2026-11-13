@@ -1,0 +1,53 @@
+# Whole stack:      docker compose up --build        -> http://localhost:4200
+# Only the infra:   docker compose up db mailpit     (then run backend and frontend on your machine)
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: taskflow
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: taskflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow -d taskflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Fake SMTP server. Every email the app sends shows up at http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/taskflow
+      SPRING_DATASOURCE_USERNAME: taskflow
+      SPRING_DATASOURCE_PASSWORD: taskflow
+      # Local demo value only. In a real deployment this comes from a secret store.
+      JWT_SECRET: local-compose-secret-change-me-at-least-32-bytes
+      MAIL_ENABLED: "true"
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+
+volumes:
+  db-data:
